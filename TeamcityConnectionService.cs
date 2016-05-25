@@ -15,14 +15,15 @@ namespace TeamcityClonerService
         private TeamCityClient client;
         private IObservable<long> observableTeamcityConnectionService;
         private IDisposable onlineSubscription;
-        private double pingRate;
+        private double scanRate;
 
-        public TeamcityConnectionService(string userName, string password, string teamcityUrl, int portNumber)
+        public TeamcityConnectionService(string userName, string password, string teamcityUrl, int portNumber, double scanRate)
         {
             this.userName = userName;
             this.password = password;
             this.teamcityUrl = teamcityUrl;
             this.portNumber = portNumber;
+            this.scanRate = scanRate;
         }
 
         public bool IsConnected { get; set; }
@@ -36,7 +37,7 @@ namespace TeamcityClonerService
                 client.Connect(userName, password);                
                 Projects = client.Projects.All();
 
-                observableTeamcityConnectionService = Observable.Timer(TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(pingRate));
+                observableTeamcityConnectionService = Observable.Timer(TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(scanRate));
                 onlineSubscription = observableTeamcityConnectionService.Subscribe(CheckTeamCityApi);
             }
             catch (Exception exception)
