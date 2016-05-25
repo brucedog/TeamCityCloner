@@ -14,28 +14,40 @@ namespace TeamcityClonerService
         {
             var fileInfo = new FileInfo(".\\log4net.config");
             XmlConfigurator.ConfigureAndWatch(fileInfo);
-            string userName = string.Empty;
-            string password = string.Empty;
-            string teamcityUrl = string.Empty;
-            int portNumber = 0;
-
+            
             try
             {
+                string userName = GetTeamCityUsername();
+                string password = GetTeamCityPassword();
+                string teamcityUrl = GetTeamcityUrl();
+                int portNumber = GetPortNumber();
+                double scanRate = GetScanRate();
+
                 log.Info("service is starting up.");
-                HostFactory.New(
+
+                HostFactory.Run(
                     service =>
                     {
-                        userName = ConfigurationManager.AppSettings["userName"];
-                        password = ConfigurationManager.AppSettings["password"];
-                        teamcityUrl = ConfigurationManager.AppSettings["teamcityUrl"];
-                        portNumber = Int32.Parse(ConfigurationManager.AppSettings["portNumber"]);
+                        service.Service(settings => new TeamCityApiCloner(new TeamcityConnectionService(userName, password, teamcityUrl, portNumber, scanRate)), s =>
+                        {
+                            s.BeforeStartingService(_ => Console.WriteLine("BeforeStart"));
+                            s.BeforeStoppingService(_ => Console.WriteLine("BeforeStop"));
+                        });
 
-                        service.Service<TeamCityApiCloner>(
-                            setupService =>
-                            {
-                                setupService.ConstructUsing(() => new TeamCityApiCloner(new TeamcityConnectionService(userName, password, teamcityUrl, portNumber)));
-                            });
+                        service.SetStartTimeout(TimeSpan.FromSeconds(10));
+                        service.SetStopTimeout(TimeSpan.FromSeconds(10));
 
+                        service.EnableServiceRecovery(esr =>
+                        {
+                            esr.RestartService(3);
+                            esr.RunProgram(7, "ping google.com");
+                            esr.RestartComputer(5, "message");
+
+                            esr.OnCrashOnly();
+                            esr.SetResetPeriod(2);
+                        });
+
+                        service.RunAsLocalSystem();
                         service.StartAutomaticallyDelayed();
                         service.StartAutomatically();
                         service.EnableServiceRecovery(e => e.RestartService(1));
@@ -49,6 +61,33 @@ namespace TeamcityClonerService
                 Console.WriteLine(exception);
                 log.Error(exception.Message);
             }
+        }
+
+        private static string GetTeamCityUsername()
+        {
+            return ConfigurationManager.AppSettings["userName"];
+        }
+
+        private static string GetTeamCityPassword()
+        {
+            return ConfigurationManager.AppSettings["password"];
+        }
+
+        private static string GetTeamcityUrl()
+        {
+            return ConfigurationManager.AppSettings["teamcityUrl"];
+        }
+
+        private static double GetScanRate()
+        {
+            double scanRate = 0;
+            return double.TryParse(ConfigurationManager.AppSettings["scanRate"], out scanRate) ? scanRate : scanRate;
+        }
+
+        private static int GetPortNumber()
+        {
+            int portNumber = 0;
+            return int.TryParse(ConfigurationManager.AppSettings["portNumber"], out portNumber) ? portNumber : portNumber;
         }
     }
 }

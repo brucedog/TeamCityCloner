@@ -6,7 +6,7 @@ namespace TeamcityClonerService
 {
     public class TeamCityApiCloner : ServiceControl
     {
-        private readonly ITeamcityConnectionService teamcityConnectionService;
+        private ITeamcityConnectionService teamcityConnectionService;
         private readonly ILog log = LogManager.GetLogger(typeof(Program));
 
         public TeamCityApiCloner(ITeamcityConnectionService teamcityConnectionService)
@@ -19,19 +19,14 @@ namespace TeamcityClonerService
             try
             {
                 log.Info("TeamCityApiCloner is starting up.");
-                if (teamcityConnectionService.Connect())
-                {
-                    // TODO Add timer to pull teamcity results and publish them on public server.
-                }
-                else
-                {
-                    throw new Exception("Could not connect to the teamcity server.");
-                }
+
+                teamcityConnectionService.IsConnected = teamcityConnectionService.Connect();
+                if (!teamcityConnectionService.IsConnected)
+                    throw new Exception("TeamCity service could not connect.");
             }
             catch (Exception exception)
             {
                 log.Error(exception.Message);
-                return false;
             }
             return true;
         }
@@ -41,13 +36,27 @@ namespace TeamcityClonerService
             try
             {
                 log.Info("TeamCityApiCloner is stopping.");
-                
+                teamcityConnectionService.Dispose();
+                teamcityConnectionService = null;
             }
             catch (Exception exception)
             {
                 log.Error(exception.Message);
-                return false;
             }
+            return true;
+        }
+
+        public bool Pause(HostControl hostControl)
+        {
+            log.Info("TeamCityApiCloner service Paused");
+
+            return true;
+        }
+
+        public bool Continue(HostControl hostControl)
+        {
+            log.Info("TeamCityApiCloner service Continued");
+
             return true;
         }
     }
